@@ -16,16 +16,19 @@
 
 package org.localmatters.lesscss4j.compile;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.net.URL;
-
 import org.apache.commons.io.FilenameUtils;
 import org.localmatters.lesscss4j.error.WriterErrorHandler;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.net.URISyntaxException;
+import java.net.URL;
+
 public class LessCssCompilerErrorTest extends AbstractLessCssCompilerTest {
     StringWriter _writer;
+    String lineSeparator;
 
     @Override
     protected void setUp() throws Exception {
@@ -33,9 +36,17 @@ public class LessCssCompilerErrorTest extends AbstractLessCssCompilerTest {
 
         _writer = new StringWriter();
 
+        lineSeparator = System.getProperty("line.separator");
+        System.setProperty("line.separator", "\n");
         _errorHandler = new WriterErrorHandler();
         ((WriterErrorHandler) _errorHandler).setLogStackTrace(false);
         ((WriterErrorHandler) _errorHandler).setWriter(new PrintWriter(_writer));
+    }
+
+    @Override
+    protected void tearDown() throws Exception {
+        System.setProperty("line.separator", lineSeparator);
+        super.tearDown();
     }
 
     public void testMismatchedUnits() throws IOException {
@@ -72,17 +83,18 @@ public class LessCssCompilerErrorTest extends AbstractLessCssCompilerTest {
         assertEquals(2, _errorHandler.getErrorCount());
     }
 
-    public void testImportMissingError() throws IOException {
+    public void testImportMissingError() throws IOException, URISyntaxException {
         String resource = "less/exceptions/import-error.less";
         compileAndValidate(resource, null);
 
         URL url = getClass().getClassLoader().getResource(resource);
-        String baseDir = FilenameUtils.getFullPath(url.getPath());
+
+        String baseDir = FilenameUtils.getFullPath(new File(url.toURI()).getAbsolutePath());
         
-        assertEquals( "import-error.less [2:8] - Import error: \"bogus.less\": File '" + baseDir + "bogus.less' does not exist\n" +
-                      "imported-with-error.less [1:8] - Import error: url(nope.less): File '" + baseDir + "nope.less' does not exist\n" +
-                      "import-error.less [4:8] - Import error: 'missing.less': File '" + baseDir + "missing.less' does not exist\n",
-                      _writer.toString());
+        assertEquals("import-error.less [2:8] - Import error: \"bogus.less\": File '" + baseDir + "bogus.less' does not exist\n" +
+                "imported-with-error.less [1:8] - Import error: url(nope.less): File '" + baseDir + "nope.less' does not exist\n" +
+                "import-error.less [4:8] - Import error: 'missing.less': File '" + baseDir + "missing.less' does not exist\n",
+                _writer.toString());
         assertEquals(3, _errorHandler.getErrorCount());
     }
 
